@@ -1,0 +1,21 @@
+{
+  "name": "경희대학교 온라인 강좌 출석 알림",
+  "short_name": "출석 알림",
+  "description": "경희대학교 e-Campus(LearningX) 온라인 강좌 출석 마감을 놓치지 않도록 관리하는 앱",
+  "id": "/",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "orientation": "portrait",
+  "background_color": "#EAEDF1",
+  "theme_color": "#7C1F30",
+  "lang": "ko",
+  "dir": "ltr",
+  "categories": ["education", "productivity"],
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
