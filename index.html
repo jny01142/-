@@ -1,0 +1,1227 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>온라인 강좌 출석 알림</title>
+<meta name="description" content="경희대학교 e-Campus(LearningX) 온라인 강좌 출석 마감을 놓치지 않도록 관리하는 앱" />
+<link rel="manifest" href="./manifest.json" />
+<meta name="theme-color" content="#7C1F30" />
+<link rel="icon" href="./icons/favicon.png" />
+<link rel="apple-touch-icon" href="./icons/icon-192.png" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="출석 알림" />
+<link rel="stylesheet" as="style" crossorigin
+  href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#EAEDF1;
+    --frame:#F7F7F5;
+    --surface:#FFFFFF;
+    --surface-alt:#F4F3EF;
+    --ink:#1B1C20;
+    --ink-soft:#5C5F68;
+    --ink-faint:#93959D;
+    --line:#E1E2E6;
+    --line-strong:#CBCDD3;
+    --maroon:#7C1F30;
+    --maroon-deep:#591420;
+    --maroon-tint:#F6E9EB;
+    --urgent:#C23A15;
+    --urgent-bg:#FCE9E1;
+    --caution:#9A6B0A;
+    --caution-bg:#FAF0D8;
+    --done:#2E6F52;
+    --done-bg:#E5F2EB;
+    --closed:#71737C;
+    --closed-bg:#EDEDF0;
+    --radius-card:14px;
+    --radius-chip:999px;
+    --shadow-card: 0 1px 2px rgba(20,20,25,0.04), 0 1px 0 rgba(20,20,25,0.03);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    font-family:'Pretendard',-apple-system,BlinkMacSystemFont,sans-serif;
+    color:var(--ink);
+    min-height:100vh;
+    display:flex;
+    justify-content:center;
+    padding:28px 12px 60px;
+  }
+  .mono{font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,monospace;}
+
+  .app{
+    width:100%;
+    max-width:460px;
+    background:var(--frame);
+    border-radius:22px;
+    border:1px solid var(--line);
+    overflow:hidden;
+    box-shadow:0 20px 45px -25px rgba(20,15,20,0.35);
+  }
+
+  /* Header */
+  .app-header{
+    background:linear-gradient(180deg,var(--maroon) 0%, var(--maroon-deep) 100%);
+    color:#fff;
+    padding:20px 20px 22px;
+    position:relative;
+  }
+  .app-header .top-row{
+    display:flex; align-items:flex-start; justify-content:space-between;
+    gap:12px;
+  }
+  .app-header .brand{ display:flex; flex-direction:column; gap:2px; }
+  .app-header .brand .school{ font-size:12px; color:rgba(255,255,255,0.72); letter-spacing:0.01em; }
+  .app-header .brand .title{ font-size:19px; font-weight:700; }
+  .sync-btn{
+    display:flex; align-items:center; gap:6px;
+    background:rgba(255,255,255,0.12);
+    border:1px solid rgba(255,255,255,0.22);
+    color:#fff;
+    padding:7px 12px;
+    border-radius:var(--radius-chip);
+    font-size:12.5px;
+    cursor:pointer;
+    font-family:inherit;
+    transition:background .15s ease;
+    white-space:nowrap;
+  }
+  .sync-btn:hover{ background:rgba(255,255,255,0.2); }
+  .sync-btn svg{ width:13px; height:13px; transition:transform .5s ease; }
+  .sync-btn.spinning svg{ animation:spin .6s linear; }
+  @keyframes spin{ to{ transform:rotate(360deg); } }
+  .sync-meta{ margin-top:2px; font-size:11px; color:rgba(255,255,255,0.55); }
+
+  .today-banner{
+    margin-top:18px;
+    background:rgba(255,255,255,0.1);
+    border:1px solid rgba(255,255,255,0.16);
+    border-radius:12px;
+    padding:13px 14px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+  }
+  .today-banner .num{ font-size:26px; font-weight:700; font-family:'JetBrains Mono',monospace; line-height:1; }
+  .today-banner .label{ font-size:12.5px; color:rgba(255,255,255,0.78); margin-top:3px; }
+  .today-banner .next{
+    text-align:right; font-size:11.5px; color:rgba(255,255,255,0.68); line-height:1.5; max-width:150px;
+  }
+  .today-banner .next b{ display:block; color:#fff; font-weight:600; font-size:12.5px; }
+
+  /* Weekly summary */
+  .weekly{
+    margin:16px 20px 4px;
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:var(--radius-card);
+    padding:14px 16px;
+    box-shadow:var(--shadow-card);
+  }
+  .weekly .head{ display:flex; justify-content:space-between; align-items:baseline; margin-bottom:10px; }
+  .weekly .head h3{ margin:0; font-size:13.5px; font-weight:600; color:var(--ink); }
+  .weekly .head span{ font-size:11.5px; color:var(--ink-faint); }
+  .weekly .stats{ display:grid; grid-template-columns:repeat(4,1fr); gap:8px; }
+  .weekly .stat{ text-align:center; }
+  .weekly .stat .n{ font-family:'JetBrains Mono',monospace; font-weight:700; font-size:16.5px; }
+  .weekly .stat .t{ font-size:10.5px; color:var(--ink-soft); margin-top:2px; }
+  .weekly .stat.total .n{ color:var(--ink); }
+  .weekly .stat.done .n{ color:var(--done); }
+  .weekly .stat.todo .n{ color:var(--maroon); }
+  .weekly .stat.urgent .n{ color:var(--urgent); }
+
+  /* Filters */
+  .filters{
+    display:flex; gap:6px; padding:14px 20px 4px; overflow-x:auto;
+  }
+  .filter-chip{
+    flex:none;
+    padding:7px 13px;
+    border-radius:var(--radius-chip);
+    border:1px solid var(--line-strong);
+    background:var(--surface);
+    color:var(--ink-soft);
+    font-size:12.5px;
+    font-family:inherit;
+    cursor:pointer;
+  }
+  .filter-chip.active{
+    background:var(--ink); border-color:var(--ink); color:#fff;
+  }
+
+  /* List */
+  .list{ padding:12px 20px 8px; display:flex; flex-direction:column; gap:10px; }
+  .empty-state{
+    text-align:center; padding:34px 12px; color:var(--ink-faint); font-size:13px;
+  }
+  .empty-state .glyph{ font-size:26px; margin-bottom:8px; }
+
+  .card{
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:var(--radius-card);
+    box-shadow:var(--shadow-card);
+    padding:14px 15px;
+    cursor:pointer;
+    transition:border-color .15s ease;
+  }
+  .card:hover{ border-color:var(--line-strong); }
+  .card.is-done{ opacity:0.66; }
+
+  .badge{
+    display:inline-flex; align-items:center; gap:5px;
+    font-size:11px; font-weight:600; padding:3px 9px; border-radius:var(--radius-chip);
+  }
+  .badge .dot{ width:6px; height:6px; border-radius:50%; }
+  .badge.st-urgent{ background:var(--urgent-bg); color:var(--urgent); }
+  .badge.st-urgent .dot{ background:var(--urgent); }
+  .badge.st-caution{ background:var(--caution-bg); color:var(--caution); }
+  .badge.st-caution .dot{ background:var(--caution); }
+  .badge.st-normal{ background:var(--surface-alt); color:var(--ink-soft); }
+  .badge.st-normal .dot{ background:var(--ink-faint); }
+  .badge.st-closed{ background:var(--closed-bg); color:var(--closed); }
+  .badge.st-closed .dot{ background:var(--closed); }
+  .badge.st-done{ background:var(--done-bg); color:var(--done); }
+  .badge.st-done .dot{ background:var(--done); }
+
+  .card-top{ display:flex; justify-content:space-between; align-items:flex-start; gap:10px; }
+  .card-body{ margin-top:9px; }
+  .course{ font-size:15px; font-weight:700; color:var(--ink); }
+  .subline{ font-size:12.5px; color:var(--ink-soft); margin-top:2px; }
+  .lecture-title{ font-size:12.5px; color:var(--ink-faint); margin-top:4px; }
+
+  .card-bottom{
+    margin-top:11px; display:flex; align-items:flex-end; justify-content:space-between; gap:10px;
+  }
+  .countdown{ font-family:'JetBrains Mono',monospace; font-weight:700; font-size:15px; }
+  .countdown.c-urgent{ color:var(--urgent); }
+  .countdown.c-caution{ color:var(--caution); }
+  .countdown.c-normal{ color:var(--ink); }
+  .countdown.c-closed{ color:var(--closed); }
+  .deadline-line{ font-size:11px; color:var(--ink-faint); margin-top:2px; font-family:'JetBrains Mono',monospace; }
+
+  .open-btn{
+    font-family:inherit; font-size:12px; font-weight:600;
+    padding:8px 13px; border-radius:9px;
+    background:var(--ink); color:#fff; border:none; cursor:pointer;
+    white-space:nowrap;
+  }
+  .open-btn:disabled{ background:var(--closed-bg); color:var(--ink-faint); cursor:default; }
+  .card.is-done .open-btn{ background:var(--done); }
+
+  /* Footer actions */
+  .footer-actions{
+    display:flex; gap:8px; padding:6px 20px 20px;
+  }
+  .ghost-btn{
+    flex:1;
+    font-family:inherit; font-size:12.5px; font-weight:600;
+    padding:11px; border-radius:11px;
+    background:var(--surface); border:1px solid var(--line-strong); color:var(--ink);
+    cursor:pointer;
+  }
+  .ghost-btn.primary{ background:var(--maroon); border-color:var(--maroon); color:#fff; }
+
+  /* Modal */
+  .overlay{
+    position:fixed; inset:0; background:rgba(20,16,18,0.5);
+    display:flex; align-items:flex-end; justify-content:center;
+    z-index:50; opacity:0; pointer-events:none; transition:opacity .18s ease;
+  }
+  .overlay.open{ opacity:1; pointer-events:auto; }
+  .sheet{
+    background:var(--frame); width:100%; max-width:460px;
+    border-radius:20px 20px 0 0;
+    max-height:88vh; overflow-y:auto;
+    transform:translateY(16px); transition:transform .18s ease;
+    padding-bottom:24px;
+  }
+  .overlay.open .sheet{ transform:translateY(0); }
+  .sheet-head{
+    position:sticky; top:0; background:var(--frame);
+    display:flex; justify-content:space-between; align-items:center;
+    padding:16px 18px 8px; z-index:2;
+  }
+  .sheet-head h2{ margin:0; font-size:15.5px; font-weight:700; }
+  .close-x{
+    width:28px; height:28px; border-radius:50%; border:1px solid var(--line-strong);
+    background:var(--surface); color:var(--ink-soft); cursor:pointer; font-size:14px; line-height:1;
+  }
+  .sheet-body{ padding:8px 18px 4px; }
+
+  .detail-row{
+    display:flex; justify-content:space-between; padding:9px 0; border-bottom:1px solid var(--line);
+    font-size:13px;
+  }
+  .detail-row:last-of-type{ border-bottom:none; }
+  .detail-row .k{ color:var(--ink-soft); }
+  .detail-row .v{ color:var(--ink); font-weight:600; text-align:right; max-width:64%; }
+  .detail-row .v.mono{ font-family:'JetBrains Mono',monospace; font-weight:600; }
+
+  .detail-actions{ display:flex; gap:8px; margin-top:16px; }
+
+  .form-field{ margin-bottom:12px; }
+  .form-field label{ display:block; font-size:12px; color:var(--ink-soft); margin-bottom:5px; font-weight:600; }
+  .form-field input[type=text], .form-field input[type=url], .form-field input[type=datetime-local]{
+    width:100%; padding:10px 11px; border-radius:9px; border:1px solid var(--line-strong);
+    font-family:inherit; font-size:13px; background:var(--surface); color:var(--ink);
+  }
+  .form-field input:focus{ outline:2px solid var(--maroon); outline-offset:1px; }
+  .form-row{ display:flex; gap:10px; }
+  .form-row .form-field{ flex:1; }
+  .checkbox-row{ display:flex; align-items:center; gap:8px; font-size:13px; color:var(--ink); margin:10px 0 4px; }
+
+  .settings-item{
+    display:flex; justify-content:space-between; align-items:center;
+    padding:12px 0; border-bottom:1px solid var(--line);
+  }
+  .settings-item:last-child{ border-bottom:none; }
+  .settings-item .t{ font-size:13.5px; font-weight:600; }
+  .settings-item .d{ font-size:11.5px; color:var(--ink-faint); margin-top:2px; }
+  .switch{
+    width:40px; height:23px; border-radius:999px; background:var(--line-strong);
+    position:relative; cursor:pointer; border:none; flex:none;
+  }
+  .switch.on{ background:var(--maroon); }
+  .switch .knob{
+    position:absolute; top:2px; left:2px; width:19px; height:19px; border-radius:50%;
+    background:#fff; transition:left .15s ease; box-shadow:0 1px 2px rgba(0,0,0,0.25);
+  }
+  .switch.on .knob{ left:19px; }
+  .settings-item.disabled .t{ color:var(--ink-faint); }
+  .future-tag{
+    font-size:10px; color:var(--ink-faint); background:var(--surface-alt);
+    padding:2px 7px; border-radius:999px; margin-left:6px;
+  }
+
+  .notif-log-item{
+    display:flex; justify-content:space-between; align-items:center;
+    padding:9px 0; border-bottom:1px solid var(--line); font-size:12px;
+  }
+  .notif-log-item:last-child{ border-bottom:none; }
+  .notif-log-item .status{ font-size:11px; padding:2px 8px; border-radius:999px; }
+  .notif-log-item .status.scheduled{ background:var(--caution-bg); color:var(--caution); }
+  .notif-log-item .status.sent{ background:var(--done-bg); color:var(--done); }
+  .test-send-btn{
+    font-family:inherit; font-size:11px; font-weight:600; color:var(--maroon);
+    background:none; border:none; cursor:pointer; padding:0;
+  }
+
+  /* Toast */
+  .toast-wrap{
+    position:fixed; top:16px; left:50%; transform:translateX(-50%);
+    z-index:80; display:flex; flex-direction:column; gap:8px; align-items:center;
+    width:100%; max-width:420px; padding:0 12px;
+  }
+  .toast{
+    background:var(--ink); color:#fff; padding:11px 15px; border-radius:11px;
+    font-size:12.5px; box-shadow:0 8px 24px rgba(0,0,0,0.25);
+    display:flex; align-items:center; gap:8px;
+    animation:toast-in .2s ease;
+  }
+  @keyframes toast-in{ from{ opacity:0; transform:translateY(-8px);} to{ opacity:1; transform:translateY(0);} }
+
+  .fab{
+    position:absolute; right:20px; bottom:20px;
+    width:48px; height:48px; border-radius:50%;
+    background:var(--maroon); color:#fff; border:none; cursor:pointer;
+    font-size:22px; box-shadow:0 8px 18px -4px rgba(124,31,48,0.55);
+    display:flex; align-items:center; justify-content:center;
+    z-index:10;
+  }
+  .app{ position:relative; }
+
+  .install-banner{
+    display:none;
+    align-items:center; gap:10px;
+    margin:14px 20px 0;
+    background:var(--surface); border:1px solid var(--line-strong);
+    border-radius:12px; padding:11px 12px;
+    box-shadow:var(--shadow-card);
+  }
+  .install-banner.show{ display:flex; }
+  .install-banner img{ width:34px; height:34px; border-radius:9px; flex:none; }
+  .install-banner .txt{ flex:1; font-size:12px; color:var(--ink-soft); line-height:1.4; }
+  .install-banner .txt b{ display:block; font-size:13px; color:var(--ink); }
+  .install-banner button{
+    font-family:inherit; font-size:12px; font-weight:700; color:#fff;
+    background:var(--maroon); border:none; border-radius:8px; padding:8px 12px; cursor:pointer;
+    flex:none;
+  }
+  .install-banner .dismiss{
+    background:none; color:var(--ink-faint); font-weight:500; padding:8px 6px;
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    *{ animation:none !important; transition:none !important; }
+  }
+</style>
+</head>
+<body>
+
+<div class="toast-wrap" id="toastWrap"></div>
+
+<div class="app" id="app">
+  <div class="app-header">
+    <div class="top-row">
+      <div class="brand">
+        <span class="school">경희대학교 · e-Campus LearningX</span>
+        <span class="title">온라인 강좌 출석</span>
+      </div>
+      <button class="sync-btn" id="syncBtn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-2.6-6.36"/><path d="M21 3v6h-6"/></svg>
+        동기화
+      </button>
+    </div>
+    <div class="sync-meta" id="syncMeta">마지막 동기화 방금 전</div>
+
+    <div class="today-banner">
+      <div>
+        <div class="num" id="todayCount">0</div>
+        <div class="label">오늘 수강해야 할 온라인 강좌</div>
+      </div>
+      <div class="next" id="nextUp">해당 없음</div>
+    </div>
+  </div>
+
+  <div class="install-banner" id="installBanner">
+    <img src="./icons/icon-192.png" alt="" />
+    <div class="txt"><b>홈 화면에 추가</b>앱처럼 아이콘으로 바로 실행할 수 있어요</div>
+    <button id="installBtn">설치</button>
+    <button class="dismiss" id="installDismiss">닫기</button>
+  </div>
+
+  <div class="weekly">
+    <div class="head"><h3>이번 주 온라인 강좌</h3><span id="weekRange"></span></div>
+    <div class="stats">
+      <div class="stat total"><div class="n" id="wkTotal">0</div><div class="t">총 개수</div></div>
+      <div class="stat done"><div class="n" id="wkDone">0</div><div class="t">완료</div></div>
+      <div class="stat todo"><div class="n" id="wkTodo">0</div><div class="t">수강 필요</div></div>
+      <div class="stat urgent"><div class="n" id="wkUrgent">0</div><div class="t">마감 임박</div></div>
+    </div>
+  </div>
+
+  <div class="filters" id="filters"></div>
+
+  <div class="list" id="list"></div>
+
+  <div class="footer-actions">
+    <button class="ghost-btn" id="settingsBtn">알림 설정</button>
+    <button class="ghost-btn primary" id="addBtn">강좌 추가</button>
+  </div>
+</div>
+
+<div class="overlay" id="overlay"><div class="sheet" id="sheet"></div></div>
+
+<script>
+(function(){
+
+  /* ---------------------------------------------------------
+     0. Web Push — lets a reminder arrive even if the app is
+     fully closed. The public key is safe to ship in client code;
+     the matching private key lives only in the server's env vars
+     (see netlify/functions/send-reminders.js).
+  --------------------------------------------------------- */
+  const VAPID_PUBLIC_KEY = 'BAeMuroan-_COYZiwGYOO1NGB4y593LUW4HPPWs9KiKKcsUUve7nzc8mFfa6JCFb_WMqrJxn4EpefGGmLXJ3jA4';
+
+  function urlBase64ToUint8Array(base64String){
+    const padding = '='.repeat((4 - base64String.length % 4) % 4);
+    const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+    const rawData = atob(base64);
+    const output = new Uint8Array(rawData.length);
+    for(let i = 0; i < rawData.length; ++i) output[i] = rawData.charCodeAt(i);
+    return output;
+  }
+
+  function getDeviceId(){
+    try{
+      let id = localStorage.getItem('khu-attendance-device-id');
+      if(!id){
+        id = 'dev-' + Math.random().toString(36).slice(2) + Date.now().toString(36);
+        localStorage.setItem('khu-attendance-device-id', id);
+      }
+      return id;
+    }catch(e){ return 'dev-fallback'; }
+  }
+
+  // Registers this device with the push server so it can receive a
+  // reminder even when the app isn't open. Safe to call repeatedly.
+  async function ensurePushSubscription(){
+    if(!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+    if(!('Notification' in window) || Notification.permission !== 'granted') return;
+    try{
+      const reg = await navigator.serviceWorker.ready;
+      let sub = await reg.pushManager.getSubscription();
+      if(!sub){
+        sub = await reg.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+        });
+      }
+      await fetch('/.netlify/functions/save-subscription', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ deviceId: getDeviceId(), subscription: sub.toJSON() })
+      });
+    }catch(e){
+      console.warn('push subscribe failed', e); // e.g. offline, or server not deployed yet — app still works locally
+    }
+  }
+
+  // Sends the current lecture list + settings to the server so the scheduled
+  // function knows what deadlines exist and whether reminders are wanted.
+  // Best-effort: failures (offline, server not set up yet) never block the UI.
+  function syncLecturesToServer(){
+    try{
+      fetch('/.netlify/functions/sync-lectures', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          deviceId: getDeviceId(),
+          notifSettings: state.notifSettings,
+          lectures: state.lectures.map(l => ({
+            id: l.id, subject: l.subject, week: l.week, session: l.session,
+            endAt: l.endAt.toISOString(), completed: l.completed
+          }))
+        })
+      }).catch(()=>{});
+    }catch(e){}
+  }
+
+  /* ---------------------------------------------------------
+     1. LectureDataProvider abstraction (spec §15)
+     Mock now; swappable for a future LearningXDataProvider.
+  --------------------------------------------------------- */
+  function minutesFromNow(mins){ return new Date(Date.now() + mins*60000); }
+
+  function seedLectures(){
+    return [
+      {
+        id: 'lec-1', subject:'전자기학', professor:'김O식 교수', week:'3주차', session:'1차시',
+        title:'전자기학 - 맥스웰 방정식 개요', url:'https://lms.khu.ac.kr/lecture/mock-1',
+        isOnline:true, countsForAttendance:true,
+        startAt: minutesFromNow(-2*60), endAt: minutesFromNow(80),
+        completed:false, lastSyncedAt: new Date()
+      },
+      {
+        id: 'lec-2', subject:'일반물리학', professor:'박O영 교수', week:'4주차', session:null,
+        title:'일반물리학 - 운동량 보존 법칙', url:'https://lms.khu.ac.kr/lecture/mock-2',
+        isOnline:true, countsForAttendance:true,
+        startAt: minutesFromNow(-3*60), endAt: minutesFromNow(26*60),
+        completed:false, lastSyncedAt: new Date()
+      },
+      {
+        id: 'lec-3', subject:'디지털회로', professor:'이O훈 교수', week:'2주차', session:'2차시',
+        title:'디지털회로 - 조합논리 회로 설계', url:'https://lms.khu.ac.kr/lecture/mock-3',
+        isOnline:true, countsForAttendance:true,
+        startAt: minutesFromNow(-4*60), endAt: minutesFromNow(4*24*60 + 5*60),
+        completed:false, lastSyncedAt: new Date()
+      },
+      {
+        id: 'lec-4', subject:'반도체공학', professor:'최O진 교수', week:'2주차', session:null,
+        title:'반도체공학 - PN 접합의 이해', url:'https://lms.khu.ac.kr/lecture/mock-4',
+        isOnline:true, countsForAttendance:true,
+        startAt: minutesFromNow(-2*24*60), endAt: minutesFromNow(-1*24*60),
+        completed:true, lastSyncedAt: new Date()
+      },
+      {
+        id: 'lec-5', subject:'자료구조', professor:'정O우 교수', week:'3주차', session:'1차시',
+        title:'자료구조 - 이진 탐색 트리', url:'https://lms.khu.ac.kr/lecture/mock-5',
+        isOnline:true, countsForAttendance:true,
+        startAt: minutesFromNow(-1*24*60), endAt: minutesFromNow(-3*60),
+        completed:false, lastSyncedAt: new Date()
+      }
+    ];
+  }
+
+  const MockLectureDataProvider = {
+    _pool: seedLectures(),
+    fetch(){
+      // Simulates a network round trip returning currently known lectures.
+      return Promise.resolve(this._pool.map(l => Object.assign({}, l)));
+    },
+    // Hook for spec §3 (detecting a lecture the professor just registered).
+    // With mock data there is nothing new to report, so this always resolves
+    // empty — swap this out for a real LearningX call later without touching
+    // any UI code.
+    pollForNew(existingIds){
+      return Promise.resolve([]);
+    }
+  };
+
+  /* ---------------------------------------------------------
+     2. State
+  --------------------------------------------------------- */
+  const state = {
+    lectures: [],
+    filter: 'all',
+    notifSettings: { h24:true, h12:false, h6:false, h2:false, h1:false },
+    notifLog: [],       // {id, lectureId, type, scheduledAt, sentAt, status}
+    lastSync: new Date(),
+    editingId: null
+  };
+
+  /* ---------------------------------------------------------
+     2b. Persistence — added/edited/deleted/completed lectures
+     must survive closing and reopening the app, not just live
+     in memory for the current session.
+  --------------------------------------------------------- */
+  const STORAGE_KEY = 'khu-attendance-data-v1';
+  let storageAvailable = true;
+
+  function persistSave(){
+    if(!storageAvailable) return;
+    try{
+      const payload = {
+        version: 1,
+        lectures: state.lectures.map(l => Object.assign({}, l, {
+          startAt: l.startAt.toISOString(),
+          endAt: l.endAt.toISOString(),
+          lastSyncedAt: l.lastSyncedAt.toISOString()
+        })),
+        notifSettings: state.notifSettings,
+        notifLog: state.notifLog.map(n => Object.assign({}, n, {
+          scheduledAt: n.scheduledAt.toISOString(),
+          sentAt: n.sentAt ? n.sentAt.toISOString() : null
+        })),
+        savedAt: new Date().toISOString()
+      };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+      syncLecturesToServer();
+    }catch(e){
+      storageAvailable = false; // e.g. running inside a sandboxed preview — fall back to in-memory only
+    }
+  }
+
+  function persistLoad(){
+    try{
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if(!raw) return null;
+      const data = JSON.parse(raw);
+      data.lectures.forEach(l => {
+        l.startAt = new Date(l.startAt);
+        l.endAt = new Date(l.endAt);
+        l.lastSyncedAt = new Date(l.lastSyncedAt);
+      });
+      data.notifLog.forEach(n => {
+        n.scheduledAt = new Date(n.scheduledAt);
+        n.sentAt = n.sentAt ? new Date(n.sentAt) : null;
+      });
+      return data;
+    }catch(e){
+      storageAvailable = false;
+      return null;
+    }
+  }
+
+  const FILTERS = [
+    { key:'all', label:'전체' },
+    { key:'todo', label:'수강 필요' },
+    { key:'urgent', label:'마감 임박' },
+    { key:'done', label:'완료' },
+    { key:'closed', label:'마감됨' }
+  ];
+
+  /* ---------------------------------------------------------
+     3. Status / countdown logic (spec §5, §6)
+  --------------------------------------------------------- */
+  function remainingMs(lecture){ return lecture.endAt.getTime() - Date.now(); }
+
+  function statusOf(lecture){
+    if(lecture.completed) return 'done';
+    const ms = remainingMs(lecture);
+    if(ms <= 0) return 'closed';
+    const hrs = ms / 3600000;
+    if(hrs < 24) return 'urgent';
+    if(hrs <= 72) return 'caution';
+    return 'normal';
+  }
+
+  function statusLabel(status){
+    return { done:'완료', closed:'마감됨', urgent:'마감 임박', caution:'주의', normal:'수강 필요' }[status];
+  }
+
+  function formatRemaining(lecture){
+    const ms = remainingMs(lecture);
+    if(lecture.completed) return '수강 완료';
+    if(ms <= 0) return '마감됨';
+    const totalMin = Math.floor(ms/60000);
+    const days = Math.floor(totalMin/1440);
+    const hours = Math.floor((totalMin%1440)/60);
+    const mins = totalMin%60;
+    if(ms > 72*3600000){ return `${days}일 ${hours}시간 남음`; }
+    if(ms > 24*3600000){ return `${days}일 ${hours}시간 남음`; }
+    if(ms > 3600000){ return `${hours}시간 ${mins}분 남음`; }
+    return `${mins}분 남음`;
+  }
+
+  function fmtDateTime(d){
+    const y = d.getFullYear(), m = String(d.getMonth()+1).padStart(2,'0'), day = String(d.getDate()).padStart(2,'0');
+    const hh = String(d.getHours()).padStart(2,'0'), mm = String(d.getMinutes()).padStart(2,'0');
+    return `${y}.${m}.${day} ${hh}:${mm}`;
+  }
+  function fmtShort(d){
+    const m = String(d.getMonth()+1).padStart(2,'0'), day = String(d.getDate()).padStart(2,'0');
+    const hh = String(d.getHours()).padStart(2,'0'), mm = String(d.getMinutes()).padStart(2,'0');
+    return `${m}/${day} ${hh}:${mm}`;
+  }
+
+  function isToday(d){
+    const now = new Date();
+    return d.getFullYear()===now.getFullYear() && d.getMonth()===now.getMonth() && d.getDate()===now.getDate();
+  }
+  function isThisWeek(d){
+    const now = new Date();
+    const start = new Date(now); start.setDate(now.getDate() - now.getDay()); start.setHours(0,0,0,0);
+    const end = new Date(start); end.setDate(start.getDate()+7);
+    return d >= start && d < end;
+  }
+
+  /* ---------------------------------------------------------
+     4. Notification scheduling (spec §7, §8, §9)
+  --------------------------------------------------------- */
+  function ensureNotificationSchedule(lecture){
+    if(!state.notifSettings.h24) return;
+    const scheduledAt = new Date(lecture.endAt.getTime() - 24*3600000);
+    const existing = state.notifLog.find(n => n.lectureId === lecture.id && n.type === 'h24');
+    if(existing){
+      // Deadline may have changed (spec §9): reschedule if the time moved and it hasn't sent yet.
+      if(existing.status !== 'sent' && existing.scheduledAt.getTime() !== scheduledAt.getTime()){
+        existing.scheduledAt = scheduledAt;
+        existing.status = scheduledAt.getTime() <= Date.now() ? 'due' : 'scheduled';
+      }
+      return;
+    }
+    state.notifLog.push({
+      id: 'ntf-' + lecture.id,
+      lectureId: lecture.id,
+      type: 'h24',
+      scheduledAt,
+      sentAt: null,
+      status: scheduledAt.getTime() <= Date.now() ? 'due' : 'scheduled'
+    });
+  }
+
+  function sendNotification(lecture, entry){
+    entry.status = 'sent';
+    entry.sentAt = new Date();
+    const body = `${lecture.subject} · ${lecture.week}${lecture.session ? ' '+lecture.session : ''}\n출석 인정 마감: 내일 ${String(lecture.endAt.getHours()).padStart(2,'0')}:${String(lecture.endAt.getMinutes()).padStart(2,'0')}`;
+    if('Notification' in window && Notification.permission === 'granted'){
+      try{
+        new Notification('온라인 강좌 마감이 하루 남았습니다.', { body });
+      }catch(e){ showToast('알림: ' + lecture.subject + ' 마감 하루 전'); }
+    } else {
+      showToast('🔔 온라인 강좌 마감이 하루 남았습니다 · ' + lecture.subject);
+    }
+  }
+
+  function tickNotifications(){
+    let firedAny = false;
+    state.notifLog.forEach(entry => {
+      const isDue = (entry.status === 'scheduled' || entry.status === 'due') && entry.scheduledAt.getTime() <= Date.now();
+      if(isDue){
+        const lecture = state.lectures.find(l => l.id === entry.lectureId);
+        // Don't fire for a lecture that was deleted, or already marked complete before the reminder ever went out.
+        if(lecture && !lecture.completed){
+          sendNotification(lecture, entry); // sets entry.status = 'sent'
+          firedAny = true;
+        } else if(lecture && lecture.completed){
+          entry.status = 'sent'; // already done — no need to remind, just close out the log entry
+          firedAny = true;
+        }
+      }
+    });
+    if(firedAny) persistSave();
+  }
+
+  /* ---------------------------------------------------------
+     5. Rendering
+  --------------------------------------------------------- */
+  const listEl = document.getElementById('list');
+  const filtersEl = document.getElementById('filters');
+  const todayCountEl = document.getElementById('todayCount');
+  const nextUpEl = document.getElementById('nextUp');
+  const syncMetaEl = document.getElementById('syncMeta');
+  const wkTotal = document.getElementById('wkTotal');
+  const wkDone = document.getElementById('wkDone');
+  const wkTodo = document.getElementById('wkTodo');
+  const wkUrgent = document.getElementById('wkUrgent');
+  const weekRangeEl = document.getElementById('weekRange');
+
+  function renderFilters(){
+    filtersEl.innerHTML = FILTERS.map(f =>
+      `<button class="filter-chip ${state.filter===f.key?'active':''}" data-filter="${f.key}">${f.label}</button>`
+    ).join('');
+  }
+
+  function passesFilter(lecture, status){
+    switch(state.filter){
+      case 'all': return true;
+      case 'todo': return !lecture.completed && (status==='normal'||status==='caution');
+      case 'urgent': return !lecture.completed && status==='urgent';
+      case 'done': return lecture.completed;
+      case 'closed': return !lecture.completed && status==='closed';
+      default: return true;
+    }
+  }
+
+  // Sort priority: still-open lectures (soonest deadline first) > missed/closed
+  // lectures (most recently missed first) > completed lectures (spec §10).
+  function sortRank(status, completed){
+    if(completed) return 2;
+    if(status === 'closed') return 1;
+    return 0; // normal / caution / urgent — still open, ranked by deadline
+  }
+
+  function sortedLectures(){
+    return [...state.lectures].sort((a,b)=>{
+      const sa = statusOf(a), sb = statusOf(b);
+      const ra = sortRank(sa, a.completed), rb = sortRank(sb, b.completed);
+      if(ra !== rb) return ra - rb;
+      if(ra === 1) return b.endAt.getTime() - a.endAt.getTime(); // closed: most recently missed first
+      return a.endAt.getTime() - b.endAt.getTime(); // open/done: soonest deadline first
+    });
+  }
+
+  function renderList(){
+    const items = sortedLectures().filter(l => passesFilter(l, statusOf(l)));
+    if(items.length === 0){
+      listEl.innerHTML = `<div class="empty-state"><div class="glyph">📭</div>해당하는 강좌가 없습니다.</div>`;
+      return;
+    }
+    listEl.innerHTML = items.map(l => cardHtml(l)).join('');
+  }
+
+  function cardHtml(l){
+    const status = statusOf(l);
+    const remainClass = { done:'c-normal', closed:'c-closed', urgent:'c-urgent', caution:'c-caution', normal:'c-normal' }[status];
+    const badgeClass = { done:'st-done', closed:'st-closed', urgent:'st-urgent', caution:'st-caution', normal:'st-normal' }[status];
+    return `
+      <div class="card ${l.completed?'is-done':''}" data-id="${l.id}">
+        <div class="card-top">
+          <span class="badge ${badgeClass}"><span class="dot"></span>${l.completed ? '완료' : statusLabel(status)}</span>
+        </div>
+        <div class="card-body">
+          <div class="course">${l.subject} <span style="font-weight:500;color:var(--ink-soft);">· ${l.week}${l.session ? ' '+l.session : ''}</span></div>
+          <div class="subline">${l.professor}</div>
+          <div class="lecture-title">${l.title}</div>
+        </div>
+        <div class="card-bottom">
+          <div>
+            <div class="countdown ${remainClass}" data-countdown="${l.id}">${formatRemaining(l)}</div>
+            <div class="deadline-line">출석 마감 ${fmtDateTime(l.endAt)}</div>
+          </div>
+          ${l.completed
+            ? `<button class="open-btn" disabled>수강 완료</button>`
+            : `<button class="open-btn" data-open="${l.id}">강의 열기</button>`}
+        </div>
+      </div>`;
+  }
+
+  function updateCountdownsOnly(){
+    document.querySelectorAll('[data-countdown]').forEach(el => {
+      const id = el.getAttribute('data-countdown');
+      const l = state.lectures.find(x => x.id === id);
+      if(!l) return;
+      el.textContent = formatRemaining(l);
+      // status could have crossed a threshold — refresh badge/class occasionally
+    });
+  }
+
+  function renderSummary(){
+    const upcoming = state.lectures.filter(l => !l.completed && l.endAt.getTime() > Date.now());
+    const todayList = upcoming.filter(l => isToday(l.endAt));
+    todayCountEl.textContent = todayList.length;
+    const next = [...upcoming].sort((a,b)=>a.endAt-b.endAt)[0];
+    nextUpEl.innerHTML = next
+      ? `<b>${next.subject} ${next.week}${next.session?(' '+next.session):''}</b>${fmtShort(next.endAt)} 마감`
+      : '예정된 마감 없음';
+  }
+
+  function renderWeekly(){
+    const weekLectures = state.lectures.filter(l => isThisWeek(l.endAt));
+    const total = weekLectures.length;
+    const done = weekLectures.filter(l => l.completed).length;
+    const urgent = weekLectures.filter(l => !l.completed && statusOf(l)==='urgent').length;
+    const todo = weekLectures.filter(l => !l.completed && statusOf(l) !== 'closed').length;
+    wkTotal.textContent = total;
+    wkDone.textContent = done;
+    wkTodo.textContent = todo;
+    wkUrgent.textContent = urgent;
+    const now = new Date();
+    const start = new Date(now); start.setDate(now.getDate()-now.getDay());
+    const end = new Date(start); end.setDate(start.getDate()+6);
+    weekRangeEl.textContent = `${start.getMonth()+1}/${start.getDate()} - ${end.getMonth()+1}/${end.getDate()}`;
+  }
+
+  function renderAll(){
+    renderFilters();
+    renderList();
+    renderSummary();
+    renderWeekly();
+  }
+
+  /* ---------------------------------------------------------
+     6. Toast
+  --------------------------------------------------------- */
+  function showToast(msg){
+    const wrap = document.getElementById('toastWrap');
+    const t = document.createElement('div');
+    t.className = 'toast';
+    t.textContent = msg;
+    wrap.appendChild(t);
+    setTimeout(()=>{ t.remove(); }, 3200);
+  }
+
+  /* ---------------------------------------------------------
+     7. Modals (detail, add/edit, settings)
+  --------------------------------------------------------- */
+  const overlay = document.getElementById('overlay');
+  const sheet = document.getElementById('sheet');
+
+  function openSheet(html){
+    sheet.innerHTML = html;
+    overlay.classList.add('open');
+  }
+  function closeSheet(){
+    overlay.classList.remove('open');
+    state.editingId = null;
+  }
+  overlay.addEventListener('click', (e)=>{ if(e.target === overlay) closeSheet(); });
+
+  function openDetail(id){
+    const l = state.lectures.find(x => x.id === id);
+    if(!l) return;
+    const status = statusOf(l);
+    openSheet(`
+      <div class="sheet-head"><h2>강좌 상세</h2><button class="close-x" data-close>×</button></div>
+      <div class="sheet-body">
+        <div class="detail-row"><span class="k">과목명</span><span class="v">${l.subject}</span></div>
+        <div class="detail-row"><span class="k">주차 / 차시</span><span class="v">${l.week}${l.session?(' · '+l.session):''}</span></div>
+        <div class="detail-row"><span class="k">강좌명</span><span class="v">${l.title}</span></div>
+        <div class="detail-row"><span class="k">교수명</span><span class="v">${l.professor}</span></div>
+        <div class="detail-row"><span class="k">출석 인정 시작</span><span class="v mono">${fmtDateTime(l.startAt)}</span></div>
+        <div class="detail-row"><span class="k">출석 인정 마감</span><span class="v mono">${fmtDateTime(l.endAt)}</span></div>
+        <div class="detail-row"><span class="k">남은 시간</span><span class="v">${formatRemaining(l)}</span></div>
+        <div class="detail-row"><span class="k">수강 상태</span><span class="v">${l.completed ? '완료' : statusLabel(status)}</span></div>
+        <div class="detail-row"><span class="k">마지막 동기화</span><span class="v mono">${fmtDateTime(l.lastSyncedAt)}</span></div>
+
+        <div class="detail-actions">
+          <a class="ghost-btn primary" style="text-decoration:none;text-align:center;" href="${l.url}" target="_blank" rel="noopener">LearningX에서 강의 열기</a>
+        </div>
+        <div class="detail-actions">
+          <button class="ghost-btn" data-toggle-complete="${l.id}">${l.completed ? '완료 취소' : '수강 완료로 표시'}</button>
+          <button class="ghost-btn" data-edit="${l.id}">수정</button>
+          <button class="ghost-btn" data-delete="${l.id}" style="color:var(--urgent);">삭제</button>
+        </div>
+
+        <div class="weekly" style="margin:18px 0 0;padding:14px 16px;">
+          <div class="head"><h3>알림 로그</h3><span>NotificationLog</span></div>
+          ${notifLogHtmlFor(l.id)}
+        </div>
+      </div>
+    `);
+  }
+
+  function notifLogHtmlFor(lectureId){
+    const entries = state.notifLog.filter(n => n.lectureId === lectureId);
+    if(entries.length === 0){
+      return `<div style="font-size:12px;color:var(--ink-faint);">예약된 알림이 없습니다. (알림 설정을 확인하세요)</div>`;
+    }
+    return entries.map(e => `
+      <div class="notif-log-item">
+        <div>
+          마감 24시간 전 알림<br>
+          <span class="mono" style="color:var(--ink-faint);">예약: ${fmtDateTime(e.scheduledAt)}</span>
+        </div>
+        <div style="text-align:right;">
+          <span class="status ${e.status==='sent'?'sent':'scheduled'}">${e.status==='sent' ? '발송됨' : (e.status==='due' ? '발송 대기' : '예약됨')}</span><br>
+          ${e.status !== 'sent' ? `<button class="test-send-btn" data-test-send="${e.id}">지금 테스트 발송</button>` : ''}
+        </div>
+      </div>
+    `).join('');
+  }
+
+  function openForm(existing){
+    const l = existing || { id:null, subject:'', professor:'', week:'', session:'', title:'', url:'', startAt:new Date(), endAt: minutesFromNow(60*24), countsForAttendance:true };
+    state.editingId = existing ? existing.id : null;
+    function toLocalInput(d){
+      const pad = n => String(n).padStart(2,'0');
+      return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    }
+    openSheet(`
+      <div class="sheet-head"><h2>${existing ? '강좌 수정' : '강좌 추가'}</h2><button class="close-x" data-close>×</button></div>
+      <div class="sheet-body">
+        <div class="form-row">
+          <div class="form-field"><label>과목명</label><input type="text" id="f-subject" value="${l.subject}"></div>
+          <div class="form-field"><label>교수명</label><input type="text" id="f-professor" value="${l.professor}"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-field"><label>주차</label><input type="text" id="f-week" value="${l.week}" placeholder="예: 5주차"></div>
+          <div class="form-field"><label>차시 (선택)</label><input type="text" id="f-session" value="${l.session||''}" placeholder="예: 1차시"></div>
+        </div>
+        <div class="form-field"><label>강좌 제목</label><input type="text" id="f-title" value="${l.title}"></div>
+        <div class="form-field"><label>강좌 URL</label><input type="url" id="f-url" value="${l.url}" placeholder="https://lms.khu.ac.kr/..."></div>
+        <div class="form-row">
+          <div class="form-field"><label>출석 인정 시작</label><input type="datetime-local" id="f-start" value="${toLocalInput(l.startAt)}"></div>
+          <div class="form-field"><label>출석 인정 마감</label><input type="datetime-local" id="f-end" value="${toLocalInput(l.endAt)}"></div>
+        </div>
+        <label class="checkbox-row"><input type="checkbox" id="f-counts" ${l.countsForAttendance!==false?'checked':''}> 출석에 반영되는 강좌입니다</label>
+
+        <div class="detail-actions">
+          <button class="ghost-btn primary" id="f-save" style="flex:2;">저장</button>
+          <button class="ghost-btn" data-close style="flex:1;">취소</button>
+        </div>
+      </div>
+    `);
+  }
+
+  /* ---------------------------------------------------------
+     8. Settings sheet (spec §14)
+  --------------------------------------------------------- */
+  function openSettings(){
+    const s = state.notifSettings;
+    openSheet(`
+      <div class="sheet-head"><h2>알림 설정</h2><button class="close-x" data-close>×</button></div>
+      <div class="sheet-body">
+        <div class="settings-item">
+          <div><div class="t">출석 인정 마감 24시간 전 알림</div><div class="d">기본으로 켜져 있습니다</div></div>
+          <button class="switch ${s.h24?'on':''}" data-toggle-setting="h24"><span class="knob"></span></button>
+        </div>
+        <div class="settings-item disabled"><div><div class="t">12시간 전<span class="future-tag">향후 지원</span></div></div><button class="switch" disabled><span class="knob"></span></button></div>
+        <div class="settings-item disabled"><div><div class="t">6시간 전<span class="future-tag">향후 지원</span></div></div><button class="switch" disabled><span class="knob"></span></button></div>
+        <div class="settings-item disabled"><div><div class="t">2시간 전<span class="future-tag">향후 지원</span></div></div><button class="switch" disabled><span class="knob"></span></button></div>
+        <div class="settings-item disabled"><div><div class="t">1시간 전<span class="future-tag">향후 지원</span></div></div><button class="switch" disabled><span class="knob"></span></button></div>
+        <div style="margin-top:16px;font-size:11.5px;color:var(--ink-faint);line-height:1.6;">
+          이 앱은 LearningX 강의를 대신하지 않습니다. 비밀번호, 인증번호, 세션 쿠키는 저장하지 않으며 학교 시스템의 인증을 우회하지 않습니다.
+        </div>
+      </div>
+    `);
+  }
+
+  /* ---------------------------------------------------------
+     9. Event delegation
+  --------------------------------------------------------- */
+  document.getElementById('filters').addEventListener('click', e=>{
+    const btn = e.target.closest('[data-filter]');
+    if(!btn) return;
+    state.filter = btn.getAttribute('data-filter');
+    renderAll();
+  });
+
+  document.getElementById('list').addEventListener('click', e=>{
+    const openBtn = e.target.closest('[data-open]');
+    if(openBtn){ e.stopPropagation(); window.open(state.lectures.find(l=>l.id===openBtn.dataset.open).url, '_blank'); return; }
+    const card = e.target.closest('.card');
+    if(card) openDetail(card.dataset.id);
+  });
+
+  document.getElementById('addBtn').addEventListener('click', ()=> openForm(null));
+  document.getElementById('settingsBtn').addEventListener('click', openSettings);
+
+  sheet.addEventListener('click', e=>{
+    if(e.target.closest('[data-close]')){ closeSheet(); return; }
+
+    const toggleComplete = e.target.closest('[data-toggle-complete]');
+    if(toggleComplete){
+      const l = state.lectures.find(x=>x.id===toggleComplete.dataset.toggleComplete);
+      l.completed = !l.completed;
+      persistSave();
+      closeSheet(); renderAll();
+      showToast(l.completed ? `${l.subject} 수강 완료로 표시했습니다.` : `${l.subject} 완료를 취소했습니다.`);
+      return;
+    }
+    const editBtn = e.target.closest('[data-edit]');
+    if(editBtn){ openForm(state.lectures.find(x=>x.id===editBtn.dataset.edit)); return; }
+
+    const delBtn = e.target.closest('[data-delete]');
+    if(delBtn){
+      const id = delBtn.dataset.delete;
+      const l = state.lectures.find(x=>x.id===id);
+      if(confirm(`'${l.subject} ${l.week}' 강좌를 삭제할까요?`)){
+        state.lectures = state.lectures.filter(x=>x.id!==id);
+        state.notifLog = state.notifLog.filter(n=>n.lectureId!==id);
+        persistSave();
+        closeSheet(); renderAll();
+        showToast('강좌를 삭제했습니다.');
+      }
+      return;
+    }
+    const testSend = e.target.closest('[data-test-send]');
+    if(testSend){
+      const entry = state.notifLog.find(n=>n.id===testSend.dataset.testSend);
+      const l = state.lectures.find(x=>x.id===entry.lectureId);
+      sendNotification(l, entry);
+      persistSave();
+      openDetail(l.id); // re-render with updated log
+      return;
+    }
+    const toggleSetting = e.target.closest('[data-toggle-setting]');
+    if(toggleSetting){
+      const key = toggleSetting.dataset.toggleSetting;
+      state.notifSettings[key] = !state.notifSettings[key];
+      if(state.notifSettings[key] && key === 'h24' && 'Notification' in window){
+        if(Notification.permission === 'default'){
+          Notification.requestPermission().then(perm => {
+            if(perm === 'granted') ensurePushSubscription();
+          });
+        } else if(Notification.permission === 'granted'){
+          ensurePushSubscription();
+        }
+      }
+      state.lectures.forEach(ensureNotificationSchedule);
+      persistSave();
+      openSettings();
+      return;
+    }
+    const saveBtn = e.target.closest('#f-save');
+    if(saveBtn){
+      const subject = document.getElementById('f-subject').value.trim();
+      const week = document.getElementById('f-week').value.trim();
+      if(!subject || !week){ showToast('과목명과 주차는 필수입니다.'); return; }
+      const data = {
+        subject,
+        professor: document.getElementById('f-professor').value.trim(),
+        week,
+        session: document.getElementById('f-session').value.trim() || null,
+        title: document.getElementById('f-title').value.trim(),
+        url: document.getElementById('f-url').value.trim() || '#',
+        startAt: new Date(document.getElementById('f-start').value),
+        endAt: new Date(document.getElementById('f-end').value),
+        countsForAttendance: document.getElementById('f-counts').checked,
+        isOnline: true,
+        lastSyncedAt: new Date()
+      };
+      if(state.editingId){
+        const l = state.lectures.find(x=>x.id===state.editingId);
+        Object.assign(l, data);
+        ensureNotificationSchedule(l);
+        showToast('강좌 정보를 수정했습니다.');
+      } else {
+        const l = Object.assign({ id:'lec-custom-'+Date.now(), completed:false }, data);
+        state.lectures.push(l);
+        ensureNotificationSchedule(l);
+        showToast('새 강좌를 추가했습니다.');
+      }
+      persistSave();
+      closeSheet(); renderAll();
+      return;
+    }
+  });
+
+  /* ---------------------------------------------------------
+     10. Sync (spec §3, §15)
+  --------------------------------------------------------- */
+  const syncBtn = document.getElementById('syncBtn');
+  syncBtn.addEventListener('click', ()=>{
+    syncBtn.classList.add('spinning');
+    setTimeout(async ()=>{
+      const existingIds = state.lectures.map(l=>l.id);
+      const added = await MockLectureDataProvider.pollForNew(existingIds);
+      added.forEach(a=>{
+        state.lectures.push(a);
+        ensureNotificationSchedule(a);
+      });
+      state.lastSync = new Date();
+      syncMetaEl.textContent = '마지막 동기화 방금 전';
+      syncBtn.classList.remove('spinning');
+      if(added.length > 0) persistSave();
+      renderAll();
+      if(added.length > 0){
+        added.forEach(a => showToast(`새로운 강좌가 등록되었습니다 · ${a.subject} ${a.week}${a.session?(' '+a.session):''}`));
+      } else {
+        showToast('새로운 강좌가 없습니다. 최신 상태입니다.');
+      }
+    }, 550);
+  });
+
+  /* ---------------------------------------------------------
+     11. Boot
+  --------------------------------------------------------- */
+  async function boot(){
+    const saved = persistLoad();
+    if(saved){
+      state.lectures = saved.lectures;
+      Object.assign(state.notifSettings, saved.notifSettings);
+      state.notifLog = saved.notifLog;
+    } else {
+      const data = await MockLectureDataProvider.fetch();
+      state.lectures = data;
+      state.lectures.forEach(ensureNotificationSchedule);
+      persistSave();
+    }
+    renderAll();
+
+    // Ask for notification permission up front if the 24h reminder is on and
+    // permission hasn't been decided yet — asking only when a reminder fires
+    // for the first time is too late to be useful.
+    if(state.notifSettings.h24 && 'Notification' in window && Notification.permission === 'default'){
+      try{ await Notification.requestPermission(); }catch(e){}
+    }
+    if(state.notifSettings.h24 && 'Notification' in window && Notification.permission === 'granted'){
+      ensurePushSubscription();
+    }
+    syncLecturesToServer();
+
+    setInterval(()=>{
+      updateCountdownsOnly();
+      tickNotifications();
+      // periodically re-render to move status badges / re-sort as thresholds cross
+    }, 1000);
+
+    setInterval(()=>{ renderAll(); persistSave(); }, 30000);
+
+    setInterval(()=>{
+      const mins = Math.floor((Date.now() - state.lastSync.getTime())/60000);
+      syncMetaEl.textContent = mins < 1 ? '마지막 동기화 방금 전' : `마지막 동기화 ${mins}분 전`;
+    }, 15000);
+  }
+
+  boot();
+
+  /* -------------------------------------------------------
+     12. PWA install prompt + service worker registration
+  ------------------------------------------------------- */
+  let deferredInstallPrompt = null;
+  const installBanner = document.getElementById('installBanner');
+  const installBtn = document.getElementById('installBtn');
+  const installDismiss = document.getElementById('installDismiss');
+
+  window.addEventListener('beforeinstallprompt', (e)=>{
+    e.preventDefault();
+    deferredInstallPrompt = e;
+    installBanner.classList.add('show');
+  });
+
+  installBtn && installBtn.addEventListener('click', async ()=>{
+    if(!deferredInstallPrompt) return;
+    installBanner.classList.remove('show');
+    deferredInstallPrompt.prompt();
+    const choice = await deferredInstallPrompt.userChoice;
+    deferredInstallPrompt = null;
+    if(choice && choice.outcome === 'accepted'){ showToast('앱이 설치되었습니다.'); }
+  });
+  installDismiss && installDismiss.addEventListener('click', ()=>{
+    installBanner.classList.remove('show');
+  });
+  window.addEventListener('appinstalled', ()=>{
+    installBanner.classList.remove('show');
+  });
+
+  if('serviceWorker' in navigator){
+    window.addEventListener('load', ()=>{
+      navigator.serviceWorker.register('./service-worker.js').catch(()=>{});
+    });
+  }
+
+})();
+</script>
+</body>
+</html>
